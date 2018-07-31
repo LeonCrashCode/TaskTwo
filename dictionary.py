@@ -30,15 +30,29 @@ class vocabulary:
 		assert idx < self.size, "Out of Vocabulary"
 		return self._itt[idx]
 
-class PretraiedEmb:
-	def __init__(self):
-		_ttv = {}
+class PretrainedEmb:
+	def __init__(self, filename):
+		_ttv = [[]] #leave a space for UNK
+		_v = vocabulary()
+		self.read_file(filename)
 	def read_file(self, filename):
+		if not filename:
+			return
 		with open(filename, "r") as r:
 			while True:
 				l = r.readline().strip()
 				if not l:
 					break
 				l = l.split()
-				self._ttv[l[0]] = [ float(t) for t in l.split()[1:]]
-
+				idx = _v.toidx(l[0])
+				assert idx == len(self._ttv)
+				self._ttv.append([float(t) for t in l[1:]])
+				if len(self._ttv[0]) == 0:
+					unk = [ 0.0 for i in range(len(l)-1)]
+				for i in range(len(self._ttv[0])):
+					self._ttv[0][i] += float(l[i+1])
+		for i in range(len(unk)):
+			self._ttv[0][i] /= (len(self._ttv) - 1)
+		self._v.freeze()
+	def toidx(self, tok):
+		return self._v.toidx(tok)

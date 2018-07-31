@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-def read_token_sequence(filename):
-	data = []
-	with open(filename, "r") as r:
-		while True:
-			l = r.readline().strip()
-			if not l:
-				break
-			data.append(l)
+def read_input(filename):
+	data = [[]]
+	for line in open(filename):
+		line = line.strip()
+		if line == "":
+			data.append([])
+		else:
+			data[-1].append(line.split())
 	return data
 
 
