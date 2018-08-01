@@ -1,9 +1,9 @@
 
 class vocabulary:
 	def __init__(self):
-		_tti = {"<UNK>":0}
-		_itt = ["<UNK>"]
-		_frozen = False
+		self._tti = {"<UNK>":0}
+		self._itt = ["<UNK>"]
+		self._frozen = False
 	def freeze(self):
 		self._frozen = True
 	def unfreeze(self):
@@ -15,12 +15,11 @@ class vocabulary:
 				if not l:
 					break
 				self.toidx(l)
-		self.size = len(self._itt)
 	def toidx(self, tok):
 		if tok in self._tti:
 			return self._tti[tok]
 
-		if self._forzen == False:
+		if self._frozen == False:
 			self._tti[tok] = len(self._itt)
 			self._itt.append(tok)
 			return len(self._itt) - 1
@@ -29,11 +28,13 @@ class vocabulary:
 	def totok(self, idx):
 		assert idx < self.size, "Out of Vocabulary"
 		return self._itt[idx]
+	def size(self):
+		return len(self._tti)
 
 class PretrainedEmb:
 	def __init__(self, filename):
-		_ttv = [[]] #leave a space for UNK
-		_v = vocabulary()
+		self._ttv = [[]] #leave a space for UNK
+		self._v = vocabulary()
 		self.read_file(filename)
 	def read_file(self, filename):
 		if not filename:
@@ -44,15 +45,19 @@ class PretrainedEmb:
 				if not l:
 					break
 				l = l.split()
-				idx = _v.toidx(l[0])
+				idx = self._v.toidx(l[0])
 				assert idx == len(self._ttv)
 				self._ttv.append([float(t) for t in l[1:]])
 				if len(self._ttv[0]) == 0:
-					unk = [ 0.0 for i in range(len(l)-1)]
+					self._ttv[0] = [ 0.0 for i in range(len(l)-1)]
 				for i in range(len(self._ttv[0])):
 					self._ttv[0][i] += float(l[i+1])
-		for i in range(len(unk)):
+		for i in range(len(self._ttv[0])):
 			self._ttv[0][i] /= (len(self._ttv) - 1)
 		self._v.freeze()
 	def toidx(self, tok):
 		return self._v.toidx(tok)
+	def size(self):
+		return self._v.size()
+	def vectors(self):
+		return self._ttv
