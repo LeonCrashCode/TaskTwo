@@ -28,7 +28,7 @@ def get_singleton_dict(train_input, word_v):
 			singleton_idx_dict[word_v.toidx(key)] = 1
 		else:
 			word_dict[key] = 1
-	return singleton_idx_dict, word_dict
+	return singleton_idx_dict, word_dict, word_v
 
 def unkify(token, word_dict, lang):
 	if len(token.rstrip()) == 0:

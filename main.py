@@ -6,6 +6,12 @@ from utils import get_singleton_dict
 from utils import input2instance
 from representation import token_representation
 
+import torch
+use_cuda = torch.cuda.is_available()
+if use_cuda:
+    torch.cuda.manual_seed_all(12345678)
+torch.manual_seed(12345678)
+
 def run_train(args, hypers):
 	word_v = vocabulary()
 	char_v = vocabulary()
@@ -30,11 +36,11 @@ def run_train(args, hypers):
 	extra_vl_size = []
 	for i in range(len(extra_vl)):
 		print "extra", i, "vocabulary size:", extra_vl[i].size()
-		extra_vl_size.append(extra_v[i].size())
+		extra_vl_size.append(extra_vl[i].size())
 
 	input_representation = token_representation(word_v.size(), char_v.size(), pretrain, extra_vl_size, args)
 	for instance in train_instance:
-		input_representation(instance, singleton_idx_dict, test=False, gpu=False)
+		input_representation(instance, singleton_idx_dict, test=False, gpu=use_cuda)
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	subparsers = parser.add_subparsers()
