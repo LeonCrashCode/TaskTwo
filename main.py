@@ -3,11 +3,11 @@ from dictionary import vocabulary
 from dictionary import PretrainedEmb
 from io import read_input
 def run_train(args, hypers):
-	#read training instances
 	word_v = vocabulary()
 	char_v = vocabulary()
 	pretrain = PretrainedEmb(args.pretrain_path)
 
+	#read training instances
 	train_input = read_input(args.train_input)
 	#lexicon representation
 	train_instance = [[]]
@@ -25,8 +25,8 @@ def run_train(args, hypers):
 					instance[-1][-2][-1].append(idx)
 			if args.pretrain_path:
 				idx = pretran.toidx(w.lower())
-				instance[-1][-2].append(idx)
-
+				instance[-1][-1].append(idx)
+			
 	dev_input = read_input(args.dev_input)
 
 
