@@ -96,9 +96,10 @@ def unkify(token, word_dict, lang):
 		return token.rstrip() 
 
 def input2instance(train_input, word_v, char_v, pretrain, extra_vl, word_dict, args, op):
-	train_instance = [[]]
+	train_instance = []
 	for instance in train_input:
 		#lexicon representation
+		train_instance.append([])
 		train_instance[-1].append([]) # word
 		train_instance[-1].append([]) # char
 		train_instance[-1].append([]) # pretrain
@@ -113,6 +114,7 @@ def input2instance(train_input, word_v, char_v, pretrain, extra_vl, word_dict, a
 				if idx == 0: # UNK
 					idx = word_v.toidx(unkify(w, word_dict, "en", force=True))
 				train_instance[-1][0].append(idx)
+
 			if args.use_char:
 				train_instance[-1][1].append([])
 				for c in list(w):
@@ -127,4 +129,5 @@ def input2instance(train_input, word_v, char_v, pretrain, extra_vl, word_dict, a
 			for t in extra_info:
 				idx = extra_vl[i].toidx(t)
 				train_instance[-1][-1].append(idx)
+
 	return train_instance, word_v, char_v, extra_vl

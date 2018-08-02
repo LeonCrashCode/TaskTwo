@@ -4,7 +4,9 @@ from dictionary import PretrainedEmb
 from utils import read_input
 from utils import get_singleton_dict
 from utils import input2instance
+
 from representation import token_representation
+from Encoder import bilstm_encoder
 
 import torch
 use_cuda = torch.cuda.is_available()
@@ -13,6 +15,7 @@ if use_cuda:
 torch.manual_seed(12345678)
 
 def run_train(args, hypers):
+	
 	word_v = vocabulary()
 	char_v = vocabulary()
 	pretrain = PretrainedEmb(args.pretrain_path)
@@ -38,9 +41,30 @@ def run_train(args, hypers):
 		print "extra", i, "vocabulary size:", extra_vl[i].size()
 		extra_vl_size.append(extra_vl[i].size())
 
+	# neural components
 	input_representation = token_representation(word_v.size(), char_v.size(), pretrain, extra_vl_size, args)
+	encoder = None
+	if args.encoder == "BILSTM":
+		encoder = bilstm_encoder(args)
+	elif args.encoder == "Transformer":
+		encoder = transformer(args)
+	assert encoder, "please specify encoder type"
+
+	#training process
 	for instance in train_instance:
-		input_representation(instance, singleton_idx_dict, test=False, gpu=use_cuda)
+		input_embeddings = input_representation(instance, singleton_idx_dict, test=False)
+		enc_rep = encoder(input_embeddings)
+		
+
+def assign_hypers(subparser, hypers):
+	for key in hypers.keys():
+		if key[-3:] == "dim" or key[-5:] == "layer":
+			subparser.add_argument("--"+key, default=int(hypers[key]))
+		elif key[-4:] == "prob":
+			subparser.add_argument("--"+key, default=float(hypers[key]))
+		else:
+			subparser.add_argument("--"+key, default=str(hypers[key]))
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	subparsers = parser.add_subparsers()
@@ -48,12 +72,13 @@ if __name__ == "__main__":
 	hypers = {}
 	for line in open("config"):
 		line = line.strip()
-		if not line:
-			break
+		if line == "" or line[0] == "#":
+			continue
 		hypers[line.split()[0]] = line.split()[1]
 
 	subparser = subparsers.add_parser("train")
 	subparser.set_defaults(callback=lambda args: run_train(args, hypers))
+	assign_hypers(subparser, hypers)
 	subparser.add_argument("--numpy-seed", type=int)
 	subparser.add_argument("--model-path-base", required=True)
 	subparser.add_argument("--train-input", default="data/02-21.input")
@@ -65,6 +90,7 @@ if __name__ == "__main__":
 	subparser.add_argument("--encoder", default="BILSTM", help="BILSTM, Transformer")
 	subparser.add_argument("--use-char", action='store_true')
 	subparser.add_argument("--pretrain-path")
+	subparser.add_argument("--gpu", type=bool, default=use_cuda)
 
 	args = parser.parse_args()
 	args.callback(args)

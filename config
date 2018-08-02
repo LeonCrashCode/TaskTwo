@@ -1,1 +1,15 @@
-word_embedding 10
+word-dim 50
+char-dim 10
+char-hidden-dim 25
+char-n-layer 1
+pretrain-dim 100
+extra-dim-list 50
+
+input-dim 100
+
+# bilstm
+bilstm-hidden-dim 150
+bilstm-n-layer 2
+
+
+
