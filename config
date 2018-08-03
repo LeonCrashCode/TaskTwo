@@ -11,5 +11,7 @@ input-dim 100
 bilstm-hidden-dim 150
 bilstm-n-layer 2
 
-
+action-dim 100
+action-hidden-dim 150
+action-n-layer 1
 

@@ -4,9 +4,13 @@ from dictionary import PretrainedEmb
 from utils import read_input
 from utils import get_singleton_dict
 from utils import input2instance
+from utils import read_output
+from utils import output2action
 
 from representation import token_representation
 from Encoder import bilstm_encoder
+from Decoder import in_order_constituent_parser
+from Decoder import in_order_constituent_parser_mask
 
 import torch
 use_cuda = torch.cuda.is_available()
@@ -18,6 +22,7 @@ def run_train(args, hypers):
 	
 	word_v = vocabulary()
 	char_v = vocabulary()
+	actn_v = vocabulary()
 	pretrain = PretrainedEmb(args.pretrain_path)
 
 	#instances
@@ -33,6 +38,11 @@ def run_train(args, hypers):
 		extra_vl[i].freeze()
 	dev_instance, word_v, char_v, extra_vl = input2instance(train_input, word_v, char_v, pretrain, extra_vl, {}, args, "dev")
 
+	train_output = read_output(args.train_action)
+	dev_output = read_output(args.dev_action)
+	train_action, actn_v = output2action(train_output, actn_v)
+	dev_actoin, actn_v = output2action(dev_output, actn_v)
+
 	print "word vocabulary size:", word_v.size()
 	print "char vocabulary size:", char_v.size() - 1
 	print "pretrain vocabulary size:", pretrain.size() - 1
@@ -40,6 +50,8 @@ def run_train(args, hypers):
 	for i in range(len(extra_vl)):
 		print "extra", i, "vocabulary size:", extra_vl[i].size()
 		extra_vl_size.append(extra_vl[i].size())
+	print "action vocaluary size:", actn_v.size() - 1
+	actn_v.freeze()
 
 	# neural components
 	input_representation = token_representation(word_v.size(), char_v.size(), pretrain, extra_vl_size, args)
@@ -49,12 +61,17 @@ def run_train(args, hypers):
 	elif args.encoder == "Transformer":
 		encoder = transformer(args)
 	assert encoder, "please specify encoder type"
-
+	
+	decoder = in_order_constituent_parser(actn_v.size(), args)
+	mask = in_order_constituent_parser_mask(actn_v)
 	#training process
-	for instance in train_instance:
+	for i, (instance, action) in enumerate(zip(train_instance, train_action)):
 		input_embeddings = input_representation(instance, singleton_idx_dict, test=False)
 		enc_rep = encoder(input_embeddings)
-		
+		mask.init(len(instance[0]))
+		mask.get_mask(action)
+
+
 
 def assign_hypers(subparser, hypers):
 	for key in hypers.keys():

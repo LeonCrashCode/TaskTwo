@@ -6,7 +6,7 @@ def read_input(filename):
 		if line == "":
 			data.append([])
 		else:
-			data[-1].append(line.split())
+			data[-1].append(["<s>"] + line.split() + ["</s>"])
 	if len(data[-1]) == 0:
 		data.pop()
 	return data
@@ -131,3 +131,19 @@ def input2instance(train_input, word_v, char_v, pretrain, extra_vl, word_dict, a
 				train_instance[-1][-1].append(idx)
 
 	return train_instance, word_v, char_v, extra_vl
+
+def read_output(filename):
+	data = []
+	for line in open(filename):
+		line = line.strip()
+		data.append(line.split())
+	return data
+
+def output2action(train_output, actn_v):
+	train_action = []
+	for output in train_output:
+		train_action.append([])
+		for a in output:
+			idx = actn_v.toidx(a)
+			train_action[-1].append(idx)
+	return train_action, actn_v
