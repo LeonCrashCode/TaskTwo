@@ -64,20 +64,23 @@ def run_train(args, hypers):
 	
 	decoder = in_order_constituent_parser(actn_v.size(), args)
 	mask = in_order_constituent_parser_mask(actn_v)
+
+	encoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, encoder.parameters()), lr=args.learning_rate_f, weight_decay=args.weight_decay_f)
+    decoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, decoder.parameters()), lr=args.learning_rate_f, weight_decay=args.weight_decay_f)
 	#training process
 	for i, (instance, action) in enumerate(zip(train_instance, train_action)):
 		input_embeddings = input_representation(instance, singleton_idx_dict, test=False)
 		enc_rep = encoder(input_embeddings)
-		mask.init(len(instance[0]))
-		mask.get_mask(action)
-
-
+		loss, _ = decoder(action, mask, enc_rep, test=False)
+		loss.backward()
+        encoder_optimizer.step()
+        decoder_optimizer.step()
 
 def assign_hypers(subparser, hypers):
 	for key in hypers.keys():
 		if key[-3:] == "dim" or key[-5:] == "layer":
 			subparser.add_argument("--"+key, default=int(hypers[key]))
-		elif key[-4:] == "prob":
+		elif key[-4:] == "prob" or key[-2:] == "-f":
 			subparser.add_argument("--"+key, default=float(hypers[key]))
 		else:
 			subparser.add_argument("--"+key, default=str(hypers[key]))

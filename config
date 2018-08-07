@@ -12,6 +12,11 @@ bilstm-hidden-dim 150
 bilstm-n-layer 2
 
 action-dim 100
-action-hidden-dim 150
+action-hidden-dim 300
 action-n-layer 1
+action-feature-dim 150
+
+# optimizer
+learning-rate-f 0.001
+weight-decay-f 1e-4
 

@@ -8,8 +8,14 @@ class in_order_constituent_parser(nn.Module):
 		self.args = args
 		self.lstm = nn.LSTM(args.action_dim, args.action_hidden_dim, num_layers=args.action_n_layer, bidirectional=False)
 		self.action_embeds = nn.Embedding(action_size, args.action_dim)
-	def forward(self, actions, masks, stack_masks, buffer_masks, enccoder_output, test=False):
+		self.feat = nn.Linear(args.action_hidden_dim * 2, args.action_feature_dim)
+		self.feat_tanh = nn.Tanh()
+		self.out = nn.Linear(args.action_feature_dim, action_size)
+	def forward(self, actions, mask, enccoder_output, test=False):
 		if not test:
+			mask.init(len(instance[0]))
+			masks, stack_masks, buffer_masks = mask.get_mask(action)
+
 			start_embeddings = self.initaction()
 			action_variable = Variable(torch.LongTensor(actions[:-1]))
 			if self.args.gpu:
@@ -27,7 +33,14 @@ class in_order_constituent_parser(nn.Module):
 			feat_hiddens = self.feat_tanh(self.feat(torch.cat((attn_stack_hiddens, attn_buffer_hiddens, action_embeddings), 1)))
 			dist = self.out(feat_hiddens)
 			log_softmax_output = F.log_softmax(dist + (masks - 1) * 1e10, 1)
-			return log_softmax_output
+
+			action_g_variable = Variable(torch.LongTensor(actions))
+			if self.args.gpu:
+				action_g_variable = action_g_variable.cuda()
+			loss = criterion(log_softmax_output, action_g_variable)
+			return loss, None
+
+
 
 	def initaction(self):
 		if self.args.gpu:
@@ -64,6 +77,7 @@ class in_order_constituent_parser_mask:
 			buffer_masks.append(self.get_buffer_mask())
 			assert masks[-1][a] == 1, "mask error"
 			self.update(a)
+		return masks, stack_masks, buffer_masks
 	def update(self, a):
 		# 0 is terminal node
 		# 1 is open non-terminal node
