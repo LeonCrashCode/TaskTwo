@@ -93,7 +93,7 @@ def run_train(args, hypers):
 		check_iter += 1
 		input_t = input_representation(train_instance[i], singleton_idx_dict=singleton_idx_dict, test=False)
 		enc_rep_t = encoder(input_t, test=False)
-		loss_t, _ = decoder(enc_rep_t, mask, train_action[i], test=False)
+		loss_t = decoder(enc_rep_t, mask, train_action[i], test=False)
 		check_loss += loss_t.data.tolist()
 
 		if check_iter % args.check_per_update == 0:

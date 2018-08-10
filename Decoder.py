@@ -53,7 +53,7 @@ class in_order_constituent_parser(nn.Module):
 			#print log_softmax_output_t, log_softmax_output_t.size()
 
 			loss_t = self.criterion(log_softmax_output_t, action_g_t)
-			return loss_t, None
+			return loss_t
 		else:
 			self.lstm.dropout = 0
 			action_t = self.initaction()
