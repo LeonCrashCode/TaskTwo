@@ -6,20 +6,19 @@ from utils import get_singleton_dict
 from utils import input2instance
 from utils import read_output
 from utils import output2action
+from system import system_check_and_init
 
 from representation import token_representation
 from Encoder import bilstm_encoder
 from Decoder import in_order_constituent_parser
 from Decoder import in_order_constituent_parser_mask
 
-import torch
-use_cuda = torch.cuda.is_available()
-if use_cuda:
-    torch.cuda.manual_seed_all(12345678)
-torch.manual_seed(12345678)
+from optimizer import optimizer
+
 
 def run_train(args, hypers):
-	
+	system_check_and_init(args)
+
 	word_v = vocabulary()
 	char_v = vocabulary()
 	actn_v = vocabulary()
@@ -41,7 +40,7 @@ def run_train(args, hypers):
 	train_output = read_output(args.train_action)
 	dev_output = read_output(args.dev_action)
 	train_action, actn_v = output2action(train_output, actn_v)
-	dev_actoin, actn_v = output2action(dev_output, actn_v)
+	#dev_actoin, actn_v = output2action(dev_output, actn_v)
 
 	print "word vocabulary size:", word_v.size()
 	print "char vocabulary size:", char_v.size() - 1
@@ -65,14 +64,36 @@ def run_train(args, hypers):
 	decoder = in_order_constituent_parser(actn_v.size(), args)
 	mask = in_order_constituent_parser_mask(actn_v)
 
-	encoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, encoder.parameters()), lr=args.learning_rate_f, weight_decay=args.weight_decay_f)
-    decoder_optimizer = optim.Adam(filter(lambda p: p.requires_grad, decoder.parameters()), lr=args.learning_rate_f, weight_decay=args.weight_decay_f)
+	encoder_optimizer = optimizer(args, encoder.parameters())
+	decoder_optimizer = optimizer(args, decoder.parameters())
 	#training process
-	for i, (instance, action) in enumerate(zip(train_instance, train_action)):
-		input_embeddings = input_representation(instance, singleton_idx_dict, test=False)
-		enc_rep = encoder(input_embeddings)
-		loss, _ = decoder(action, mask, enc_rep, test=False)
-		loss.backward()
+
+	i = len(train_instance)
+	check_iter = 0
+	check_loss = 0
+	while True:
+		if i == len(train_instance):
+			i = 0
+		check_iter += 1
+		input_t = input_representation(train_instance[i], singleton_idx_dict=singleton_idx_dict, test=False)
+		enc_rep_t = encoder(input_t, test=False)
+		loss_t, _ = decoder(enc_rep_t, mask, train_action[i], test=False)
+		check_loss += loss_t.data.tolist()
+
+		if check_iter % args.check_per_update == 0:
+			print('epoch %.6f : %.10f ' % (check_iter*1.0 / len(train_instance), check_loss*1.0 / args.check_per_update))
+			check_loss = 0
+		"""
+		if check_iter % args.eval_per_update == 0:
+			for instance in dev_instance:
+				dev_input_embeddings = input_representation(instance)
+				dev_enc_rep = encoder(dev_input_embeddings)
+				dev_action_output = decoder(dev_enc_rep, mask)
+				eval_score = 
+		"""
+
+
+		loss_t.backward()
         encoder_optimizer.step()
         decoder_optimizer.step()
 
@@ -104,13 +125,15 @@ if __name__ == "__main__":
 	subparser.add_argument("--train-input", default="data/02-21.input")
 	subparser.add_argument("--train-action", default="data/02-21.action")
 	subparser.add_argument("--dev-input", default="data/22.input")
-	subparser.add_argument("--dev-action", default="data/22.action")
+	subparser.add_argument("--dev-action", default="data/22.gold")
 	subparser.add_argument("--batch-size", type=int, default=250)
-	subparser.add_argument("--checks-per-epoch", type=int, default=4)
+	subparser.add_argument("--check-per-update", type=int, default=1000)
+	subparser.add_argument("--eval-per-update", type=int, default=30000)
 	subparser.add_argument("--encoder", default="BILSTM", help="BILSTM, Transformer")
 	subparser.add_argument("--use-char", action='store_true')
 	subparser.add_argument("--pretrain-path")
-	subparser.add_argument("--gpu", type=bool, default=use_cuda)
+	subparser.add_argument("--gpu", type=bool)
+	subparser.add_argument("--optimizer", default="adam")
 
 	args = parser.parse_args()
 	args.callback(args)

@@ -26,8 +26,9 @@ class token_representation(nn.Module):
 
 		self.info2input = nn.Linear(info_dim, args.input_dim)
 		self.tanh = nn.Tanh()
+		self.dropout = nn.Dropout(self.args.dropout_f)
 
-	def forward(self, instance, singleton_idx_dict, test=False):
+	def forward(self, instance, singleton_idx_dict=None, test=True):
 		if not test:
 			word_sequence = []
 			for i, widx in enumerate(instance[0], 0):
@@ -35,49 +36,56 @@ class token_representation(nn.Module):
 					word_sequence.append(instance[3][i])
 				else:
 					word_sequence.append(widx)
-		word_variable = Variable(torch.LongTensor(word_sequence), volatile=test)
+		word_t = torch.LongTensor(word_sequence)
 		if self.args.gpu:
-			word_variable = word_variable.cuda()
-		word_embeddings = self.word_embeds(word_variable)
-		#print word_embeddings, word_embeddings.size()
+			word_t = word_t.cuda()
+		word_t = self.word_embeds(word_t)
+		if not test:
+			word_t = self.dropout(word_t)
+
 		if self.args.use_char:
-			char_outputs = []
+			char_ts = []
 			for char_instance in instance[1]:
-				char_variable = Variable(torch.LongTensor(char_instance), volatile=test)
+				char_t = torch.LongTensor(char_instance)
 				if self.args.gpu:
-					char_variable = char_variable.cuda()
-				char_embeddings = self.char_embeds(char_variable)
-				char_hidden = self.initcharhidden()
-				char_output, char_hidden = self.lstm(char_embeddings.unsqueeze(1), char_hidden)
-				char_outputs.append(torch.sum(char_output,0))
-			char_embeddings = torch.cat(char_outputs, 0)
-			word_embeddings = torch.cat((word_embeddings, char_embeddings), 1)
+					char_t = char_t.cuda()
+				char_t = self.char_embeds(char_t)
+				char_hidden_t = self.initcharhidden()
+				char_t, _ = self.lstm(char_t.unsqueeze(1), char_hidden_t)
+				char_t_per_word = torch.sum(char_t,0)
+				if not test:
+					char_t_per_word = self.dropout(char_t_per_word)
+				char_ts.append(char_t_per_word)
+			char_t = torch.cat(char_ts, 0)
+			word_t = torch.cat((word_t, char_t), 1)
 		#print word_embeddings, word_embeddings.size()
 		if self.args.pretrain_path:
-			pretrain_variable = Variable(torch.LongTensor(instance[2]), volatile=test)
+			pretrain_t = torch.LongTensor(instance[2])
 			if self.args.gpu:
-				pretrain_variable = pretrain_variable.cuda()
-			pretrain_embeddings = self.pretrain_embeds(pretrain_variable)
-			word_embeddings = torch.cat((word_embeddings, pretrain_embeddings), 1)
+				pretrain_t = pretrain_t.cuda()
+			pretrain_t = self.pretrain_embeds(pretrain_t)
+			word_t = torch.cat((word_t, pretrain_t), 1)
 		#print word_embeddings, word_embeddings.size()
 		if self.args.extra_dim_list:
 			for i, extra_embeds in enumerate(self.extra_embeds):
-				extra_variable = Variable(torch.LongTensor(instance[4+i]), volatile=test)
+				extra_t = torch.LongTensor(instance[4+i])
 				if self.args.gpu:
-					extra_variable = extra_variable.cuda()
-				extra_embeddings = extra_embeds(extra_variable)
-				word_embeddings = torch.cat((word_embeddings, extra_embeddings), 1)
+					extra_t = extra_t.cuda()
+				extra_t = extra_embeds(extra_t)
+				if not test:
+					extra_t = self.dropout(extra_t)
+				word_t = torch.cat((word_t, extra_t), 1)
 		#print word_embeddings, word_embeddings.size()
-		word_embeddings = self.tanh(self.info2input(word_embeddings))
+		word_t = self.tanh(self.info2input(word_t))
 		#print word_embeddings, word_embeddings.size()
-		return word_embeddings
+		return word_t
 
 	def initcharhidden(self):
 		if self.args.gpu:
-			result = (Variable(torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim)).cuda(),
-				Variable(torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim)).cuda())
+			result = (torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim, requires_grad=True).cuda(),
+				torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim, requires_grad=True).cuda())
 			return result
 		else:
-			result = (Variable(torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim)),
-				Variable(torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim)))
+			result = (torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim, requires_grad=True),
+				torch.zeros(2*self.args.char_n_layer, 1, self.args.char_hidden_dim, requires_grad=True))
 			return result

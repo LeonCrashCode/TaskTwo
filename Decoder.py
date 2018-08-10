@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
+import torch.nn.functional as F
 
 class in_order_constituent_parser(nn.Module):
 	def __init__(self, action_size, args):
@@ -8,53 +8,66 @@ class in_order_constituent_parser(nn.Module):
 		self.args = args
 		self.lstm = nn.LSTM(args.action_dim, args.action_hidden_dim, num_layers=args.action_n_layer, bidirectional=False)
 		self.action_embeds = nn.Embedding(action_size, args.action_dim)
-		self.feat = nn.Linear(args.action_hidden_dim * 2, args.action_feature_dim)
+		self.feat = nn.Linear(args.action_hidden_dim * 2 + args.action_dim, args.action_feature_dim)
 		self.feat_tanh = nn.Tanh()
 		self.out = nn.Linear(args.action_feature_dim, action_size)
-	def forward(self, actions, mask, enccoder_output, test=False):
+		self.dropout = nn.Dropout(args.dropout_f)
+		self.criterion = nn.NLLLoss()
+	def forward(self, encoder_output_t, mask, actions=None, test=True):
+		mask.init(encoder_output_t.size(0))
 		if not test:
-			mask.init(len(instance[0]))
-			masks, stack_masks, buffer_masks = mask.get_mask(action)
+			self.lstm.dropout = self.args.dropout_f
+			masks, stack_masks, buffer_masks = mask.get_mask(actions)
+			masks_t = torch.FloatTensor(masks)
+			stack_masks_t = torch.FloatTensor(stack_masks)
+			buffer_masks_t = torch.FloatTensor(buffer_masks)
 
-			start_embeddings = self.initaction()
-			action_variable = Variable(torch.LongTensor(actions[:-1]))
 			if self.args.gpu:
-				action_variable = action_variable.cuda()
-			action_embeddings = self.action_embeds(action_variable)
-			action_embeddings = torch.cat((start_embeddings, action_embeddings),0)
-			hidden = self.inithidden()
-			output, hidden = self.lstm(action_embeddings.unsqueeze(1), hidden)
-			
-			attn_scores = torch.bmm(output.transpose(0,1), encoder_output.transpose(0,1).transpose(1,2)).view(output.size(0),-1)
-			attn_stack_weights = F.softmax(attn_scores + (stack_masks - 1) * 1e10, 1)
-			attn_buffer_weights = F.softmax(attn_scores + (buffer_masks - 1) * 1e10, 1)
-			attn_stack_hiddens = torch.bmm(attn_stack_weights.unsqueeze(0),encoder_output.transpose(0,1)).view(output.size(0),-1)
-			attn_buffer_hiddens = torch.bmm(attn_buffer_weights.unsqueeze(0),encoder_output.transpose(0,1)).view(output.size(0),-1)
-			feat_hiddens = self.feat_tanh(self.feat(torch.cat((attn_stack_hiddens, attn_buffer_hiddens, action_embeddings), 1)))
-			dist = self.out(feat_hiddens)
-			log_softmax_output = F.log_softmax(dist + (masks - 1) * 1e10, 1)
+				masks_t = masks_t.cuda()
+				stack_masks_t = stack_masks_t.cuda()
+				buffer_masks_t = buffer_masks_t.cuda()
 
-			action_g_variable = Variable(torch.LongTensor(actions))
+			start_t = self.initaction()
+			action_t = torch.LongTensor(actions[:-1])
+			if self.args.gpu:
+				action_t = action_t.cuda()
+			action_t = self.action_embeds(action_t)
+			action_t = torch.cat((start_t, action_t),0)
+			action_t = self.dropout(action_t)
+			hidden_t = self.inithidden()
+			output_t, _ = self.lstm(action_t.unsqueeze(1), hidden_t)
+
+			attn_scores_t = torch.bmm(output_t.transpose(0,1), encoder_output_t.transpose(0,1).transpose(1,2)).view(output_t.size(0),-1)
+			attn_stack_weights_t = F.log_softmax(attn_scores_t + (stack_masks_t - 1) * 1e10, 1)
+			attn_buffer_weights_t = F.log_softmax(attn_scores_t + (buffer_masks_t - 1) * 1e10, 1)
+			attn_stack_hiddens_t = torch.bmm(attn_stack_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1)).view(output_t.size(0),-1)
+			attn_buffer_hiddens_t = torch.bmm(attn_buffer_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1)).view(output_t.size(0),-1)
+			feat_hiddens_t = self.feat_tanh(self.feat(torch.cat((attn_stack_hiddens_t, attn_buffer_hiddens_t, action_t), 1)))
+			dist_t = self.out(feat_hiddens_t)
+			log_softmax_output_t = F.log_softmax(dist_t + (masks_t - 1) * 1e10, 1)
+
+			action_g_t = torch.LongTensor(actions)
 			if self.args.gpu:
 				action_g_variable = action_g_variable.cuda()
-			loss = criterion(log_softmax_output, action_g_variable)
-			return loss, None
+			#print log_softmax_output_t, log_softmax_output_t.size()
 
-
-
+			loss_t = self.criterion(log_softmax_output_t, action_g_t)
+			return loss_t, None
+		else:
+			self.lstm.dropout = 0
 	def initaction(self):
 		if self.args.gpu:
-			return Variable(torch.zeros(1, self.args.action_dim)).cuda()
+			return torch.zeros(1, self.args.action_dim, requires_grad=True),cuda()
 		else:
-			return Variable(torch.zeros(1, self.args.action_dim))
-	def initcharhidden(self):
+			return torch.zeros(1, self.args.action_dim, requires_grad=True)
+	def inithidden(self):
 		if self.args.gpu:
-			result = (Variable(torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim)).cuda(),
-				Variable(torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim)).cuda())
+			result = (torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim, requires_grad=True).cuda(),
+				torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim, requires_grad=True).cuda())
 			return result
 		else:
-			result = (Variable(torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim)),
-				Variable(torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim)))
+			result = (torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim, requires_grad=True),
+				torch.zeros(self.args.action_n_layer, 1, self.args.action_hidden_dim, requires_grad=True))
 			return result
 class in_order_constituent_parser_mask:
 	def __init__(self, actn_v):
@@ -145,9 +158,9 @@ class in_order_constituent_parser_mask:
 			else:
 				assert False, "no allowed action"
 		return mask
-	def get_stack_mask():
+	def get_stack_mask(self):
 		return [1] + [ 1 for i in range(self.size - self.buffer)] + [ 0 for i in range(self.buffer)] + [0]
-	def get_buffer_mask():
+	def get_buffer_mask(self):
 		return [0] + [ 0 for i in range(self.size - self.buffer)] + [ 1 for i in range(self.buffer)] + [1]
 
 				
