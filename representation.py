@@ -21,7 +21,10 @@ class token_representation(nn.Module):
 			dims = args.extra_dim_list.split(",")
 			self.extra_embeds = []
 			for i, size in enumerate(extra_vl_size):
-				self.extra_embeds.append(nn.Embedding(size, int(dims[i])))
+				if args.gpu:
+					self.extra_embeds.append(nn.Embedding(size, int(dims[i])).cuda())
+				else:
+					self.extra_embeds.append(nn.Embedding(size, int(dims[i])))
 				info_dim += int(dims[i])
 
 		self.info2input = nn.Linear(info_dim, args.input_dim)
