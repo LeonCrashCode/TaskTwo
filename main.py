@@ -72,6 +72,9 @@ def run_train(args, hypers):
 	decoder_optimizer = optimizer(args, decoder.parameters())
 	#training process
 
+	if args.gpu:
+		encoder = encoder.cuda()
+		decoder = decoder.cuda()
 	i = len(train_instance)
 	check_iter = 0
 	check_loss = 0
