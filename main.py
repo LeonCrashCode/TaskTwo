@@ -55,6 +55,7 @@ def run_train(args, hypers):
 		extra_vl_size.append(extra_vl[i].size())
 	print "action vocaluary size:", actn_v.size() - 1
 	actn_v.freeze()
+	actn_v.dump()
 
 	# neural components
 	input_representation = token_representation(word_v.size(), char_v.size(), pretrain, extra_vl_size, args)
@@ -65,7 +66,7 @@ def run_train(args, hypers):
 		encoder = transformer(args)
 	assert encoder, "please specify encoder type"
 	
-	decoder = in_order_constituent_parser(actn_v.size(), args)
+	decoder = in_order_constituent_parser(actn_v.size(), actn_v.toidx("TERM"), args)
 	mask = in_order_constituent_parser_mask(actn_v)
 
 	encoder_optimizer = optimizer(args, encoder.parameters())
@@ -98,16 +99,17 @@ def run_train(args, hypers):
 		if check_iter % args.check_per_update == 0:
 			print('epoch %.6f : %.10f ' % (check_iter*1.0 / len(train_instance), check_loss*1.0 / args.check_per_update))
 			check_loss = 0
-		"""
+		
 		if check_iter % args.eval_per_update == 0:
 			for instance in dev_instance:
 				dev_input_embeddings = input_representation(instance)
 				dev_enc_rep = encoder(dev_input_embeddings)
 				dev_action_output = decoder(dev_enc_rep, mask)
-				eval_score = 
-		"""
+				for act in dev_action_output:
+					print actn_v.totok(act),
+				print
 
-
+		i += 1
 		loss_t.backward()
 		encoder_optimizer.step()
 		decoder_optimizer.step()

@@ -30,6 +30,9 @@ class vocabulary:
 		return self._itt[idx]
 	def size(self):
 		return len(self._tti)
+	def dump(self):
+		for i, tok in enumerate(self._itt, 0):
+			print i, tok
 
 class PretrainedEmb:
 	def __init__(self, filename):
