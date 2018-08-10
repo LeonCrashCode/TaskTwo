@@ -132,7 +132,7 @@ if __name__ == "__main__":
 	subparser.add_argument("--encoder", default="BILSTM", help="BILSTM, Transformer")
 	subparser.add_argument("--use-char", action='store_true')
 	subparser.add_argument("--pretrain-path")
-	subparser.add_argument("--gpu", type=bool)
+	subparser.add_argument("--gpu", action='store_true')
 	subparser.add_argument("--optimizer", default="adam")
 
 	args = parser.parse_args()
