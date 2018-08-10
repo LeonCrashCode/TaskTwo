@@ -81,6 +81,9 @@ def run_train(args, hypers):
 	check_iter = 0
 	check_loss = 0
 	while True:
+		encoder_optimizer.zero_grad()
+		decoder_optimizer.zero_grad()
+		
 		if i == len(train_instance):
 			i = 0
 		check_iter += 1
@@ -103,8 +106,8 @@ def run_train(args, hypers):
 
 
 		loss_t.backward()
-        encoder_optimizer.step()
-        decoder_optimizer.step()
+		encoder_optimizer.step()
+		decoder_optimizer.step()
 
 def assign_hypers(subparser, hypers):
 	for key in hypers.keys():
