@@ -18,6 +18,10 @@ from optimizer import optimizer
 
 def run_train(args, hypers):
 	system_check_and_init(args)
+	if args.gpu:
+		print "GPU available"
+	else:
+		print "CPU only"
 
 	word_v = vocabulary()
 	char_v = vocabulary()
