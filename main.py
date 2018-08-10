@@ -105,9 +105,9 @@ def run_train(args, hypers):
 				dev_input_embeddings = input_representation(instance)
 				dev_enc_rep = encoder(dev_input_embeddings)
 				dev_action_output = decoder(dev_enc_rep, mask)
-				for act in dev_action_output:
-					print actn_v.totok(act),
-				print
+				#for act in dev_action_output:
+				#	print actn_v.totok(act),
+				#print
 
 		i += 1
 		loss_t.backward()
