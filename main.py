@@ -75,6 +75,8 @@ def run_train(args, hypers):
 	if args.gpu:
 		encoder = encoder.cuda()
 		decoder = decoder.cuda()
+		input_representation = input_representation.cuda()
+		
 	i = len(train_instance)
 	check_iter = 0
 	check_loss = 0
