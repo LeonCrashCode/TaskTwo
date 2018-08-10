@@ -48,7 +48,7 @@ class in_order_constituent_parser(nn.Module):
 
 			action_g_t = torch.LongTensor(actions)
 			if self.args.gpu:
-				action_g_variable = action_g_variable.cuda()
+				action_g_t = action_g_t.cuda()
 			#print log_softmax_output_t, log_softmax_output_t.size()
 
 			loss_t = self.criterion(log_softmax_output_t, action_g_t)
@@ -57,7 +57,7 @@ class in_order_constituent_parser(nn.Module):
 			self.lstm.dropout = 0
 	def initaction(self):
 		if self.args.gpu:
-			return torch.zeros(1, self.args.action_dim, requires_grad=True),cuda()
+			return torch.zeros(1, self.args.action_dim, requires_grad=True).cuda()
 		else:
 			return torch.zeros(1, self.args.action_dim, requires_grad=True)
 	def inithidden(self):
