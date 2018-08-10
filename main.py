@@ -70,6 +70,8 @@ def run_train(args, hypers):
 
 	encoder_optimizer = optimizer(args, encoder.parameters())
 	decoder_optimizer = optimizer(args, decoder.parameters())
+	input_representation_optimizer = optimizer(args, input_representation.parameters())
+
 	#training process
 
 	if args.gpu:
@@ -83,6 +85,7 @@ def run_train(args, hypers):
 	while True:
 		encoder_optimizer.zero_grad()
 		decoder_optimizer.zero_grad()
+		input_representation_optimizer.zero_grad()
 		
 		if i == len(train_instance):
 			i = 0
@@ -108,6 +111,7 @@ def run_train(args, hypers):
 		loss_t.backward()
 		encoder_optimizer.step()
 		decoder_optimizer.step()
+		input_representation_optimizer.step()
 
 def assign_hypers(subparser, hypers):
 	for key in hypers.keys():

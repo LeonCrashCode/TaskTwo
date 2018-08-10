@@ -19,6 +19,7 @@ class token_representation(nn.Module):
 			info_dim += args.pretrain_dim
 		if args.extra_dim_list:
 			dims = args.extra_dim_list.split(",")
+			"""
 			self.extra_embeds = []
 			for i, size in enumerate(extra_vl_size):
 				if args.gpu:
@@ -26,6 +27,24 @@ class token_representation(nn.Module):
 				else:
 					self.extra_embeds.append(nn.Embedding(size, int(dims[i])))
 				info_dim += int(dims[i])
+			"""
+			assert len(dims) == len(extra_vl_size)
+			assert len(dims) <= 5, "5 extra embeds at most"
+			if len(dims) >= 1:
+				self.extra_embeds1 = nn.Embedding(extra_vl_size[0], int(dims[0]))
+				info_dim += int(dims[0])
+			if len(dims) >= 2:
+				self.extra_embeds2 = nn.Embedding(extra_vl_size[1], int(dims[1]))
+				info_dim += int(dims[1])
+			if len(dims) >= 3:
+				self.extra_embeds3 = nn.Embedding(extra_vl_size[2], int(dims[2]))
+				info_dim += int(dims[2])
+			if len(dims) >= 4:
+				self.extra_embeds4 = nn.Embedding(extra_vl_size[3], int(dims[3]))
+				info_dim += int(dims[3])
+			if len(dims) >= 5:
+				self.extra_embeds5 = nn.Embedding(extra_vl_size[4], int(dims[4]))
+				info_dim += int(dims[4])
 
 		self.info2input = nn.Linear(info_dim, args.input_dim)
 		self.tanh = nn.Tanh()
@@ -36,6 +55,7 @@ class token_representation(nn.Module):
 			word_sequence = []
 			for i, widx in enumerate(instance[0], 0):
 				if (widx in singleton_idx_dict) and random() < 0.1:
+				#if False:
 					word_sequence.append(instance[3][i])
 				else:
 					word_sequence.append(widx)
@@ -70,6 +90,7 @@ class token_representation(nn.Module):
 			word_t = torch.cat((word_t, pretrain_t), 1)
 		#print word_embeddings, word_embeddings.size()
 		if self.args.extra_dim_list:
+			"""
 			for i, extra_embeds in enumerate(self.extra_embeds):
 				extra_t = torch.LongTensor(instance[4+i])
 				if self.args.gpu:
@@ -78,6 +99,38 @@ class token_representation(nn.Module):
 				if not test:
 					extra_t = self.dropout(extra_t)
 				word_t = torch.cat((word_t, extra_t), 1)
+			"""
+			if len(instance)-4 >= 1:
+				extra_t = torch.LongTensor(instance[4+0])
+				if self.args.gpu:
+					extra_t = extra_t.cuda()
+				extra_t = self.extra_embeds1(extra_t)
+				word_t = torch.cat((word_t, extra_t), 1)
+			if len(instance)-4 >= 2:
+				extra_t = torch.LongTensor(instance[4+1])
+				if self.args.gpu:
+					extra_t = extra_t.cuda()
+				extra_t = self.extra_embeds1(extra_t)
+				word_t = torch.cat((word_t, extra_t), 1)
+			if len(instance)-4 >= 3:
+				extra_t = torch.LongTensor(instance[4+2])
+				if self.args.gpu:
+					extra_t = extra_t.cuda()
+				extra_t = self.extra_embeds1(extra_t)
+				word_t = torch.cat((word_t, extra_t), 1)
+			if len(instance)-4 >= 4:
+				extra_t = torch.LongTensor(instance[4+3])
+				if self.args.gpu:
+					extra_t = extra_t.cuda()
+				extra_t = self.extra_embeds1(extra_t)
+				word_t = torch.cat((word_t, extra_t), 1)
+			if len(instance)-4 >= 5:
+				extra_t = torch.LongTensor(instance[4+4])
+				if self.args.gpu:
+					extra_t = extra_t.cuda()
+				extra_t = self.extra_embeds1(extra_t)
+				word_t = torch.cat((word_t, extra_t), 1)
+
 		#print word_embeddings, word_embeddings.size()
 		word_t = self.tanh(self.info2input(word_t))
 		#print word_embeddings, word_embeddings.size()

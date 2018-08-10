@@ -7,7 +7,7 @@ class bilstm_encoder(nn.Module):
 		super(bilstm_encoder,self).__init__()
 		self.args = args
 		self.lstm = nn.LSTM(args.input_dim, args.bilstm_hidden_dim, num_layers=args.bilstm_n_layer, bidirectional=True)
-	def forward(self, input_t, test=False):
+	def forward(self, input_t, test=True):
 		hidden_t = self.inithidden()
 		if not test:
 			self.lstm.dropout = self.args.dropout_f
