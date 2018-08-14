@@ -12,6 +12,10 @@ from representation import token_representation
 from Encoder import bilstm_encoder
 from Decoder import in_order_constituent_parser
 from Decoder import in_order_constituent_parser_mask
+from Decoder import in_order_constituent_action2tree
+from eval import constituent_parser_eval
+
+import torch
 
 from optimizer import optimizer
 
@@ -83,6 +87,7 @@ def run_train(args, hypers):
 	i = len(train_instance)
 	check_iter = 0
 	check_loss = 0
+	bscore = -1
 	while True:
 		encoder_optimizer.zero_grad()
 		decoder_optimizer.zero_grad()
@@ -101,14 +106,23 @@ def run_train(args, hypers):
 			check_loss = 0
 		
 		if check_iter % args.eval_per_update == 0:
-			for instance in dev_instance:
+			trees = []
+			for j, instance in enumerate(dev_instance):
 				dev_input_embeddings = input_representation(instance)
 				dev_enc_rep = encoder(dev_input_embeddings)
 				dev_action_output = decoder(dev_enc_rep, mask)
-				for j, act in enumerate(dev_action_output, 0):
-					dev_action_output[j] = actn_v.totok(act)
-				
-
+				trees.append(in_order_constituent_action2tree(dev_action_output, actn_v, dev_input[j][0][1:-1], dev_input[j][-1][1:-1]))
+			with open("tmp/dev.output.tmp", "w") as w:
+				for tree in trees:
+					w.write(tree+"\n")
+				w.flush()
+				w.close()
+			score = constituent_parser_eval(args)
+			print('epoch %.6f : dev F-score %.10f ' % (check_iter*1.0 / len(train_instance), score))
+			if score >= bscore:
+				bscore = score
+				torch.save({"encoder":encoder.state_dict(), "decoder":decoder.state_dict(), "input_representation": input_representation.state_dict()}, args.model_path_base+"/model")
+				exit(1)
 		i += 1
 		loss_t.backward()
 		encoder_optimizer.step()
@@ -144,9 +158,11 @@ if __name__ == "__main__":
 	subparser.add_argument("--train-action", default="data/02-21.action")
 	subparser.add_argument("--dev-input", default="data/22.input")
 	subparser.add_argument("--dev-action", default="data/22.gold")
+	subparser.add_argument("--dev-output", default="data/22.auto.clean.notop")
 	subparser.add_argument("--batch-size", type=int, default=250)
 	subparser.add_argument("--check-per-update", type=int, default=1000)
 	subparser.add_argument("--eval-per-update", type=int, default=30000)
+	subparser.add_argument("--eval-path-base", default="EVALB")
 	subparser.add_argument("--encoder", default="BILSTM", help="BILSTM, Transformer")
 	subparser.add_argument("--use-char", action='store_true')
 	subparser.add_argument("--pretrain-path")

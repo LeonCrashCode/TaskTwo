@@ -45,12 +45,11 @@ class in_order_constituent_parser(nn.Module):
 			action_t = self.dropout(action_t)
 			hidden_t = self.inithidden()
 			output_t, _ = self.lstm(action_t.unsqueeze(1), hidden_t)
-
-			attn_scores_t = torch.bmm(output_t.transpose(0,1), encoder_output_t.transpose(0,1).transpose(1,2)).view(output_t.size(0),-1)
-			attn_stack_weights_t = F.log_softmax(attn_scores_t + (stack_masks_t - 1) * 1e10, 1)
-			attn_buffer_weights_t = F.log_softmax(attn_scores_t + (buffer_masks_t - 1) * 1e10, 1)
-			attn_stack_hiddens_t = torch.bmm(attn_stack_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1)).view(output_t.size(0),-1)
-			attn_buffer_hiddens_t = torch.bmm(attn_buffer_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1)).view(output_t.size(0),-1)
+			attn_scores_t = torch.bmm(output_t.transpose(0,1), encoder_output_t.transpose(0,1).transpose(1,2))[0]
+			attn_stack_weights_t = F.softmax(attn_scores_t + (stack_masks_t - 1) * 1e10, 1)
+			attn_buffer_weights_t = F.softmax(attn_scores_t + (buffer_masks_t - 1) * 1e10, 1)
+			attn_stack_hiddens_t = torch.bmm(attn_stack_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1))[0]
+			attn_buffer_hiddens_t = torch.bmm(attn_buffer_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1))[0]
 			feat_hiddens_t = self.feat_tanh(self.feat(torch.cat((attn_stack_hiddens_t, attn_buffer_hiddens_t, action_t), 1)))
 			dist_t = self.out(feat_hiddens_t)
 			log_softmax_output_t = F.log_softmax(dist_t + (masks_t - 1) * 1e10, 1)
@@ -85,11 +84,11 @@ class in_order_constituent_parser(nn.Module):
 					buffer_masks_t = buffer_masks_t.cuda()
 
 				output_t, hidden_t = self.lstm(action_t.unsqueeze(1), hidden_t)
-				attn_scores_t = torch.bmm(output_t.transpose(0,1), encoder_output_t.transpose(0,1).transpose(1,2)).view(output_t.size(0),-1)
-				attn_stack_weights_t = F.log_softmax(attn_scores_t + (stack_masks_t - 1) * 1e10, 1)
-				attn_buffer_weights_t = F.log_softmax(attn_scores_t + (buffer_masks_t - 1) * 1e10, 1)
-				attn_stack_hiddens_t = torch.bmm(attn_stack_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1)).view(output_t.size(0),-1)
-				attn_buffer_hiddens_t = torch.bmm(attn_buffer_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1)).view(output_t.size(0),-1)
+				attn_scores_t = torch.bmm(output_t.transpose(0,1), encoder_output_t.transpose(0,1).transpose(1,2))[0]
+				attn_stack_weights_t = F.softmax(attn_scores_t + (stack_masks_t - 1) * 1e10, 1)
+				attn_buffer_weights_t = F.softmax(attn_scores_t + (buffer_masks_t - 1) * 1e10, 1)
+				attn_stack_hiddens_t = torch.bmm(attn_stack_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1))[0]
+				attn_buffer_hiddens_t = torch.bmm(attn_buffer_weights_t.unsqueeze(0),encoder_output_t.transpose(0,1))[0]
 				feat_hiddens_t = self.feat_tanh(self.feat(torch.cat((attn_stack_hiddens_t, attn_buffer_hiddens_t, action_t), 1)))
 				dist_t = self.out(feat_hiddens_t).view(-1)
 				dist_t = dist_t + (masks_t - 1) * 1e10
@@ -228,7 +227,46 @@ class in_order_constituent_parser_mask:
 	def get_buffer_mask(self):
 		return [0] + [ 0 for i in range(self.size - self.buffer)] + [ 1 for i in range(self.buffer - 1)] + [1]
 
-				
+def in_order_constituent_action2tree(actions, actn_v, words, postags):
+	trees = []
+	stack = []
+	i = 0
+	assert len(words) == len(postags)
+	for act in actions:
+		act = actn_v.totok(act)
+		if act == "SHIFT":
+			trees.append("("+postags[i]+" "+words[i]+")")
+			stack.append(0)
+			i += 1
+		elif act[:2] == "PJ":
+			trees.append("("+act[3:-1])
+			stack.append(-1)
+		elif act == "REDUCE":
+			children = []
+			while stack[-1] != -1:
+				children.append(trees[-1])
+				trees.pop()
+				stack.pop()
+			nonterminal = trees[-1]
+			trees.pop()
+			stack.pop()
+
+			children.append(trees[-1])
+			trees.pop()
+			stack.pop()
+
+			trees.append(nonterminal+" "+" ".join(reversed(children))+")")
+			stack.append(0)
+		elif act == "TERM":
+			assert len(stack) == 1 and len(trees) == 1
+			assert i == len(words)
+		else:
+			print act,
+			assert False, "unrecognized action"
+	return trees[0]
+
+
+
 
 
 

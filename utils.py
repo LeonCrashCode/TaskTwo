@@ -147,3 +147,4 @@ def output2action(train_output, actn_v):
 			idx = actn_v.toidx(a)
 			train_action[-1].append(idx)
 	return train_action, actn_v
+
