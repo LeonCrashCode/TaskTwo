@@ -17,7 +17,7 @@ action-n-layer 1
 action-feature-dim 150
 
 # optimizer
-learning-rate-f 0.001
-weight-decay-f 1e-4
+learning-rate-f 0.0001
+weight-decay-f 0
 dropout-f 0.2
 

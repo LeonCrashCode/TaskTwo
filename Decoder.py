@@ -19,6 +19,14 @@ class in_order_constituent_parser(nn.Module):
 		if not test:
 			self.lstm.dropout = self.args.dropout_f
 			masks, stack_masks, buffer_masks = mask.get_mask(actions)
+			#for i in range(len(masks)):
+			#	print masks[i], actions[i]
+			#print "stack"
+			#for i in range(len(stack_masks)):
+			#	print stack_masks[i], actions[i]
+			#print "buffer"
+			#for i in range(len(buffer_masks)):
+                        #        print buffer_masks[i], actions[i]
 			masks_t = torch.FloatTensor(masks)
 			stack_masks_t = torch.FloatTensor(stack_masks)
 			buffer_masks_t = torch.FloatTensor(buffer_masks)

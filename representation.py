@@ -53,8 +53,8 @@ class token_representation(nn.Module):
 	def forward(self, instance, singleton_idx_dict=None, test=True):
 		word_sequence = []
 		for i, widx in enumerate(instance[0], 0):
-			if (not test) and (widx in singleton_idx_dict) and random() < 0.1:
-			#if False:
+			#if (not test) and (widx in singleton_idx_dict) and random() < 0.1:
+			if False:
 				word_sequence.append(instance[3][i])
 			else:
 				word_sequence.append(widx)
