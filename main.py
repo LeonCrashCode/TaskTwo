@@ -43,7 +43,7 @@ def run_train(args, hypers):
 	char_v.freeze()
 	for i in range(len(extra_vl)):
 		extra_vl[i].freeze()
-	dev_instance, word_v, char_v, extra_vl = input2instance(train_input, word_v, char_v, pretrain, extra_vl, {}, args, "dev")
+	dev_instance, word_v, char_v, extra_vl = input2instance(dev_input, word_v, char_v, pretrain, extra_vl, {}, args, "dev")
 
 	train_output = read_output(args.train_action)
 	dev_output = read_output(args.dev_action)
@@ -111,6 +111,9 @@ def run_train(args, hypers):
 				dev_input_embeddings = input_representation(instance)
 				dev_enc_rep = encoder(dev_input_embeddings)
 				dev_action_output = decoder(dev_enc_rep, mask)
+				#print dev_action_output
+				#print dev_input[j][0][1:-1]
+				#print dev_input[j][-1][1:-1]
 				trees.append(in_order_constituent_action2tree(dev_action_output, actn_v, dev_input[j][0][1:-1], dev_input[j][-1][1:-1]))
 			with open("tmp/dev.output.tmp", "w") as w:
 				for tree in trees:
@@ -118,11 +121,10 @@ def run_train(args, hypers):
 				w.flush()
 				w.close()
 			score = constituent_parser_eval(args)
-			print('epoch %.6f : dev F-score %.10f ' % (check_iter*1.0 / len(train_instance), score))
+			print('dev F-score %.10f ' % (score))
 			if score >= bscore:
 				bscore = score
 				torch.save({"encoder":encoder.state_dict(), "decoder":decoder.state_dict(), "input_representation": input_representation.state_dict()}, args.model_path_base+"/model")
-				exit(1)
 		i += 1
 		loss_t.backward()
 		encoder_optimizer.step()

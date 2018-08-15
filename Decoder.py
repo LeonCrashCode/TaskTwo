@@ -62,6 +62,7 @@ class in_order_constituent_parser(nn.Module):
 			loss_t = self.criterion(log_softmax_output_t, action_g_t)
 			return loss_t
 		else:
+			#print mask.buffer
 			self.lstm.dropout = 0
 			action_t = self.initaction()
 			hidden_t = self.inithidden()

@@ -112,7 +112,7 @@ def input2instance(train_input, word_v, char_v, pretrain, extra_vl, word_dict, a
 				train_instance[-1][3].append(idx)
 			elif op == "dev":
 				if idx == 0: # UNK
-					idx = word_v.toidx(unkify(w, word_dict, "en", force=True))
+					idx = word_v.toidx(unkify(w, word_dict, "en"))
 				train_instance[-1][0].append(idx)
 
 			if args.use_char:
