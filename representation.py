@@ -12,7 +12,7 @@ class token_representation(nn.Module):
 		if args.use_char:
 			self.char_embeds = nn.Embedding(char_size, args.char_dim)
 			self.lstm = nn.LSTM(args.char_dim, args.char_hidden_dim, num_layers=args.char_n_layer, bidirectional=True)
-			info_dim += args.char_hidden_dim*2
+			info_dim += args.char_hidden_dim*2*3
 		if args.pretrain_path:
 			self.pretrain_embeds = nn.Embedding(pretrain.size(), args.pretrain_dim)
 			self.pretrain_embeds.weight = nn.Parameter(torch.FloatTensor(pretrain.vectors()), False)
@@ -76,7 +76,10 @@ class token_representation(nn.Module):
 				char_t = self.char_embeds(char_t)
 				char_hidden_t = self.initcharhidden()
 				char_t, _ = self.lstm(char_t.unsqueeze(1), char_hidden_t)
-				char_t_per_word = torch.sum(char_t,0)
+				char_t_avg = torch.sum(char_t,0) / char_t.size(0)
+				char_t_max = torch.max(char_t,0)[0]
+				char_t_min = torch.min(char_t,0)[0]
+				char_t_per_word = torch.cat((char_t_avg, char_t_max, char_t_min), 1)
 				if not test:
 					char_t_per_word = self.dropout(char_t_per_word)
 				char_ts.append(char_t_per_word)
