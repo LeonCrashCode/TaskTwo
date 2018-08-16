@@ -73,25 +73,21 @@ def run_train(args, hypers):
 	decoder = in_order_constituent_parser(actn_v.size(), actn_v.toidx("TERM"), args)
 	mask = in_order_constituent_parser_mask(actn_v)
 
-	encoder_optimizer = optimizer(args, encoder.parameters())
-	decoder_optimizer = optimizer(args, decoder.parameters())
-	input_representation_optimizer = optimizer(args, input_representation.parameters())
-
-	#training process
-
 	if args.gpu:
 		encoder = encoder.cuda()
 		decoder = decoder.cuda()
 		input_representation = input_representation.cuda()
-		
+	
+	#training process
+	model_parameters = list(encoder.parameters()) + list(decoder.parameters()) + list(input_representation.parameters())
+	model_optimizer = optimizer(args, parameters)
+
 	i = len(train_instance)
 	check_iter = 0
 	check_loss = 0
 	bscore = -1
 	while True:
-		encoder_optimizer.zero_grad()
-		decoder_optimizer.zero_grad()
-		input_representation_optimizer.zero_grad()
+		model_optimizer.zero_grad()
 		
 		if i == len(train_instance):
 			i = 0
@@ -127,9 +123,8 @@ def run_train(args, hypers):
 				torch.save({"encoder":encoder.state_dict(), "decoder":decoder.state_dict(), "input_representation": input_representation.state_dict()}, args.model_path_base+"/model")
 		i += 1
 		loss_t.backward()
-		encoder_optimizer.step()
-		decoder_optimizer.step()
-		input_representation_optimizer.step()
+		torch.nn.utils.clip_grad_norm(model_parameters, 5)
+		model_optimizer.step()
 
 def assign_hypers(subparser, hypers):
 	for key in hypers.keys():
