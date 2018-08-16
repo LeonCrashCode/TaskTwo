@@ -80,7 +80,7 @@ def run_train(args, hypers):
 	
 	#training process
 	model_parameters = list(encoder.parameters()) + list(decoder.parameters()) + list(input_representation.parameters())
-	model_optimizer = optimizer(args, parameters)
+	model_optimizer = optimizer(args, model_parameters)
 
 	i = len(train_instance)
 	check_iter = 0
