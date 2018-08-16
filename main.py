@@ -89,7 +89,10 @@ def run_train(args, hypers):
 	bscore = -1
 	epoch = -1
 	while True:
-		#model_optimizer.zero_grad()
+		for p in model_parameters:
+			if p.grad is not None:
+				p.grad.detach_()
+				p.grad.zero_()
 		
 		if i == len(train_instance):
 			i = 0
