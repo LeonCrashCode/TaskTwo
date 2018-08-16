@@ -80,17 +80,22 @@ def run_train(args, hypers):
 	
 	#training process
 	model_parameters = list(encoder.parameters()) + list(decoder.parameters()) + list(input_representation.parameters())
-	model_optimizer = optimizer(args, model_parameters)
+	#model_optimizer = optimizer(args, model_parameters)
+	lr = args.learning_rate_f
 
 	i = len(train_instance)
 	check_iter = 0
 	check_loss = 0
 	bscore = -1
+	epoch = -1
 	while True:
-		model_optimizer.zero_grad()
+		#model_optimizer.zero_grad()
 		
 		if i == len(train_instance):
 			i = 0
+			epoch += 1
+			lr = args.learning_rate_f / (1 + epoch * args.learning_rate_decay_f)
+
 		check_iter += 1
 		input_t = input_representation(train_instance[i], singleton_idx_dict=singleton_idx_dict, test=False)
 		enc_rep_t = encoder(input_t, test=False)
@@ -98,7 +103,7 @@ def run_train(args, hypers):
 		check_loss += loss_t.data.tolist()
 
 		if check_iter % args.check_per_update == 0:
-			print('epoch %.6f : %.10f [lr: %.6f]' % (check_iter*1.0 / len(train_instance), check_loss*1.0 / args.check_per_update, model_optimizer.lr))
+			print('epoch %.6f : %.10f [lr: %.6f]' % (epoch, check_loss*1.0 / args.check_per_update, lr))
 			check_loss = 0
 		
 		if check_iter % args.eval_per_update == 0:
@@ -123,8 +128,12 @@ def run_train(args, hypers):
 				torch.save({"encoder":encoder.state_dict(), "decoder":decoder.state_dict(), "input_representation": input_representation.state_dict()}, args.model_path_base+"/model")
 		i += 1
 		loss_t.backward()
-		torch.nn.utils.clip_grad_norm(model_parameters, 5)
-		model_optimizer.step()
+		torch.nn.utils.clip_grad_value_(model_parameters, 5)
+		#model_optimizer.step()
+		for p in model_parameters:
+			if p.requires_grad:
+				p.data.add_(-lr, p.grad.data)
+
 
 def assign_hypers(subparser, hypers):
 	for key in hypers.keys():
