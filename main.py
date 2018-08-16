@@ -98,7 +98,7 @@ def run_train(args, hypers):
 		check_loss += loss_t.data.tolist()
 
 		if check_iter % args.check_per_update == 0:
-			print('epoch %.6f : %.10f ' % (check_iter*1.0 / len(train_instance), check_loss*1.0 / args.check_per_update))
+			print('epoch %.6f : %.10f [lr: %.6f]' % (check_iter*1.0 / len(train_instance), check_loss*1.0 / args.check_per_update, model_optimizer.lr))
 			check_loss = 0
 		
 		if check_iter % args.eval_per_update == 0:
